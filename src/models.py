@@ -13,6 +13,15 @@ class MinimalSource(BaseModel):
     last_character_index: int
 
 
+class Chunk(BaseModel):
+    """Represent one searchable piece of a source file."""
+
+    text: str
+    file_path: str
+    first_character_index: int
+    last_character_index: int
+
+
 class UnansweredQuestion(BaseModel):
     """Represent a question without an answer."""
 
