@@ -1,5 +1,5 @@
 from .models import Chunk
-import ast
+from langchain_text_splitters import PythonCodeTextSplitter
 
 
 def chunk_markdown(
@@ -81,6 +81,19 @@ def chunk_code(
     file_path: str,
     max_chunk_size: int = 2000,
 ) -> list[Chunk]:
-    tree = ast.parse(content)
-    for node in tree.body:
-        print(type(node).__name__, node.lineno, node.end_lineno)
+    splitter = PythonCodeTextSplitter(chunk_size=max_chunk_size,
+                                      chunk_overlap=0,
+                                      keep_separator=True,
+                                      strip_whitespace=False,
+                                      add_start_index=True,)
+    document = splitter.create_documents([content])
+    chunks = []
+    for doc in document:
+        text = doc.page_content
+        start = doc.metadata["start_index"]
+        end = start + len(text)
+        chunks.append(Chunk(text=text,
+                            file_path=file_path,
+                            first_character_index=start,
+                            last_character_index=end))
+    return chunks
