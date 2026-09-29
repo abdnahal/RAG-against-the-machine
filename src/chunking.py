@@ -81,6 +81,7 @@ def chunk_code(
     file_path: str,
     max_chunk_size: int = 2000,
 ) -> list[Chunk]:
+    """Spit code into chunks"""
     splitter = PythonCodeTextSplitter(chunk_size=max_chunk_size,
                                       chunk_overlap=0,
                                       keep_separator=True,
