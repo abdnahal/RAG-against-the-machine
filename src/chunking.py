@@ -1,15 +1,18 @@
 from .models import Chunk
 from langchain_text_splitters import PythonCodeTextSplitter
+from typing import List
+from pathlib import Path
+import json
 
 
 def chunk_markdown(
     content: str,
     file_path: str,
     max_chunk_size: int = 2000,
-) -> list[Chunk]:
+) -> List[Chunk]:
     """Split Markdown into chunks."""
 
-    chunks: list[Chunk] = []
+    chunks: List[Chunk] = []
 
     lines = content.splitlines(keepends=True)
 
@@ -80,7 +83,7 @@ def chunk_code(
     content: str,
     file_path: str,
     max_chunk_size: int = 2000,
-) -> list[Chunk]:
+) -> List[Chunk]:
     """Spit code into chunks"""
     splitter = PythonCodeTextSplitter(chunk_size=max_chunk_size,
                                       chunk_overlap=0,
@@ -97,4 +100,32 @@ def chunk_code(
                             file_path=file_path,
                             first_character_index=start,
                             last_character_index=end))
+    return chunks
+
+
+def save_chunks(chunks: List[Chunk], path: Path) -> None:
+    final = []
+    with open(str(path), 'w') as f:
+        for chunk in chunks:
+            final.append(chunk.model_dump())
+        json.dump(final, f, indent=2)
+
+
+def chunk_file(path: Path, max_chunk_size: int) -> list[Chunk]:
+    chunks = []
+    path_str = str(path)
+    with open(path_str, 'r') as f:
+        if path_str.endswith('.py'):
+            chunks = chunk_code(f.read(), path_str, max_chunk_size)
+        else:
+            chunks = chunk_markdown(f.read(), path_str, max_chunk_size)
+    return chunks
+
+
+def load_chunks(path: Path) -> List[Chunk]:
+    chunks = []
+    with open(str(path), 'r', encoding='utf-8') as f:
+        loaded = json.load(f)
+        for dct in loaded:
+            chunks.append(Chunk.model_validate(dct))
     return chunks
