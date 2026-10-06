@@ -119,3 +119,13 @@ def save_bm25_index(
         data['chunk_terms'] = chunk_terms
         data['postings'] = postings
         json.dump(data, f, indent=2)
+
+
+def load_bm25_index(path: Path) -> Tuple[
+    Dict[str, int],
+    Dict[str, Dict[str, int]],
+    Dict[str, Dict[str, int]],
+]:
+    with open(str(path), 'r') as f:
+        data = json.load(f)
+        return (data['chunk_lengths'], data["chunk_terms"], data["postings"])
