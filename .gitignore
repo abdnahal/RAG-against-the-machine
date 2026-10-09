@@ -4,7 +4,7 @@ __pycache__/
 
 .mypy_cache/
 .pytest_cache/
-
+.vscode*
 data/processed/
 data/output/
 vllm*

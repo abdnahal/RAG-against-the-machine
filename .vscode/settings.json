@@ -1,0 +1,11 @@
+{
+    "remote.autoForwardPortsFallback": 0,
+    "python.analysis.indexing": false,
+    "python.analysis.exclude": [
+        "**/.venv/**",
+        "**/__pycache__/**",
+        "data/**",
+        "datasets_public/**"
+    ],
+    "python.analysis.diagnosticMode": "openFilesOnly"
+}
