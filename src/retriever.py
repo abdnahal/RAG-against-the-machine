@@ -10,8 +10,17 @@ from pathlib import Path
 
 def tokenize(text: str) -> list[str]:
     text = text.lower()
-    sequence = re.findall('[a-z0-9]+', text)
-    return sequence
+
+    tokens = re.findall(r"[a-z0-9]+", text)
+    identifiers = re.findall(r"\b[a-z_][a-z0-9_]*\b", text)
+
+    tokens.extend(
+        identifier
+        for identifier in identifiers
+        if "_" in identifier
+        and any(character.isalnum() for character in identifier)
+    )
+    return tokens
 
 
 def counted(sequence: List) -> Dict[str, int]:
@@ -47,7 +56,10 @@ def build_postings(maped: Dict[str, Chunk]) -> Tuple[
     chunk_terms = {}
     postings = {}
     for chunk_id, chunk in maped.items():
-        tokens = tokenize(chunk.text)
+        searchable_text = (
+            chunk.text + "\n" + Path(chunk.file_path).name
+            )
+        tokens = tokenize(searchable_text)
         if not tokens:
             continue
         count = counted(tokens)

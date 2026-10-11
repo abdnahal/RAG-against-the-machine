@@ -22,7 +22,7 @@ class RagCLI:
         processed_directory: str = "data/processed",
     ) -> None:
         """Build or update the saved index."""
-        if max_chunk_size > 2000 or max_chunk_size <= 0:
+        if type(max_chunk_size) is not int or not 1 <= max_chunk_size <= 2000:
             raise ValueError("Invalid max_chunk_size!")
         corpus = Path(corpus_path)
         processed = Path(processed_directory)
@@ -38,8 +38,8 @@ class RagCLI:
     ) -> None:
         """Search the saved index and write JSON results."""
         sources = []
-        if not isinstance(k, int) or k < 0:
-            raise ValueError("Top k results should be postive!")
+        if type(k) is not int or k < 0:
+            raise ValueError("k must be a nonnegative integer.")
         if query.strip() and k:
             chunks = search_saved_index(query, k, Path(processed_directory))
             for chunk in chunks:
@@ -71,11 +71,27 @@ class RagCLI:
     ) -> None:
         """Search every question in a dataset."""
         results = []
-        if not isinstance(k, int) or k < 0:
+        input_path = Path(dataset_path)
+        output_path = Path(save_directory) / input_path.name
+
+        if input_path.resolve() == output_path.resolve():
+            raise ValueError("Output must not overwrite the input file.")
+
+        if type(k) is not int or k < 0:
             raise ValueError("Top k results should be postive!")
+
         with open(dataset_path, "r") as f:
             data_loaded = json.load(f)
             dataset = RagDataset.model_validate(data_loaded)
+
+        question_ids = set()
+        for question in dataset.rag_questions:
+            if question.question_id in question_ids:
+                raise ValueError(
+                    f"Duplicate question ID: {question.question_id}"
+                )
+            question_ids.add(question.question_id)
+
         chunks = load_chunks(Path(processed_directory) / "chunks.json")
         chunk_ids = map_chunk(chunks)
         chunk_lengths, _, postings = load_bm25_index(
@@ -179,13 +195,13 @@ class RagCLI:
         print(f"Recall@{k}: {avg:.3f}")
 
     def answer(self, query: str,
-               output: str = 'data/output/search_results',
+               output: str = 'data/output/search_results_and_answer',
                processed_directory: str = 'data/processed',
                k: int = 5) -> None:
+
         if type(k) is not int or k < 0:
             raise ValueError("k must be a nonnegative integer.")
 
-        tokenizer, model = load_llm()
         chunks = []
         path = Path(output) / "results.json"
         if query.strip() and k > 0:
@@ -201,6 +217,7 @@ class RagCLI:
             answer_text = "No relevant sources were found to answer this \
 question."
         else:
+            tokenizer, model = load_llm()
             messages = build_messages(query, chunks)
             answer_text = generate_answer(tokenizer, model, messages)
         sources = [
@@ -229,12 +246,32 @@ question."
         student_search_results_path: str,
         save_directory: str = "data/output/search_results_and_answer",
     ) -> None:
+
         answers = []
-        tokenizer, model = load_llm()
         path = Path(student_search_results_path)
+        output_path = Path(save_directory) / path.name
+
+        if path.resolve() == output_path.resolve():
+            raise ValueError("Output must not overwrite the input file.")
+
         results = StudentSearchResults.model_validate_json(
                             path.read_text(encoding="utf-8")
                         )
+
+        if results.k < 0:
+            raise ValueError("k must be nonnegative.")
+
+        question_ids = set()
+
+        for result in results.search_results:
+            if result.question_id in question_ids:
+                raise ValueError(
+                    f"Duplicate question ID: {result.question_id}"
+                )
+            if len(result.retrieved_sources) > results.k:
+                raise ValueError("Retrieved source count exceeds k.")
+            question_ids.add(result.question_id)
+
         file_cache = {}
         for result in tqdm(results.search_results, desc="Answering"):
             chunks = []
@@ -262,12 +299,14 @@ question."
             elif not chunks:
                 re = "No relevant sources were found."
             else:
+                tokenizer, model = load_llm()
                 messages = build_messages(result.question, chunks)
                 re = generate_answer(tokenizer, model, messages)
             answers.append(MinimalAnswer(question=result.question,
                            question_id=result.question_id,
                            retrieved_sources=result.retrieved_sources,
                            answer=re))
+            question_ids.add(result.question_id)
         output = StudentSearchResultsAndAnswer(search_results=answers,
                                                k=results.k)
         output_path = Path(save_directory) / path.name

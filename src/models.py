@@ -2,7 +2,7 @@
 
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class MinimalSource(BaseModel):
@@ -62,11 +62,45 @@ class StudentSearchResults(BaseModel):
     """Represent retrieval results for multiple questions."""
 
     search_results: list[MinimalSearchResults]
-    k: int
+    k: int = Field(strict=True, ge=0)
+
+    @field_validator("k", mode="before")
+    @classmethod
+    def parse_k(cls, value: object) -> int:
+        """Accept integers and strings representing integers."""
+        if type(value) is int:
+            return value
+
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                pass
+
+        raise ValueError(
+            "k must be an integer or an integer string."
+        )
 
 
 class StudentSearchResultsAndAnswer(BaseModel):
     """Represent generated answers for multiple questions."""
 
     search_results: list[MinimalAnswer]
-    k: int
+    k: int = Field(strict=True, ge=0)
+
+    @field_validator("k", mode="before")
+    @classmethod
+    def parse_k(cls, value: object) -> int:
+        """Accept integers and strings representing integers."""
+        if type(value) is int:
+            return value
+
+        if isinstance(value, str):
+            try:
+                return int(value)
+            except ValueError:
+                pass
+
+        raise ValueError(
+            "k must be an integer or an integer string."
+        )

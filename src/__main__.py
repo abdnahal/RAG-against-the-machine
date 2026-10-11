@@ -11,6 +11,9 @@ def main() -> None:
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         raise SystemExit(1)
+    except KeyboardInterrupt:
+        print("\nProgram interrupted!\n")
+        raise SystemExit(130)
 
 
 if __name__ == "__main__":

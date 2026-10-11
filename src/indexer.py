@@ -2,9 +2,12 @@ from pathlib import Path
 from typing import List, Dict
 from .models import Chunk
 from .chunking import chunk_file, save_chunks, load_chunks
-from .retriever import save_bm25_index, build_postings, load_bm25_index, search, map_chunk
+from .retriever import save_bm25_index, build_postings, load_bm25_index
+from .retriever import search, map_chunk
 import hashlib
 import json
+from tqdm import tqdm
+import os
 
 
 def file_hash(path: Path) -> str:
@@ -15,7 +18,7 @@ def file_hash(path: Path) -> str:
 def discover_files(root: Path) -> list[Path]:
     files = []
     extensions = (".py", ".md", ".txt", ".rst")
-    for item in root.rglob("*"):
+    for item in tqdm(root.rglob("*"), desc="Indexing"):
         if item.is_file():
             if item.name.endswith(extensions):
                 files.append(item)
@@ -54,6 +57,9 @@ def index_corpus(
     if not corpus_path.exists() or not corpus_path.is_dir():
         raise FileNotFoundError("Missing corpus folder!")
 
+    corpus_path = Path(
+        os.path.relpath(corpus_path.resolve(), Path.cwd())
+    )
     processed_directory.mkdir(parents=True, exist_ok=True)
     chunks = processed_directory / 'chunks.json'
     maped = processed_directory / 'map.json'
@@ -95,8 +101,7 @@ def search_saved_index(
     try:
         chunk_lengths, chunk_terms, postings = load_bm25_index(bm25)
     except json.JSONDecodeError:
-        print("Invalid json detected!\n")
-        return []
+        raise ValueError("The saved BM25 index contains invalid JSON.")
     chunks_map = map_chunk(load_chunks(chunks))
     results = search(query, k, chunks_map, chunk_lengths, postings)
     return results
