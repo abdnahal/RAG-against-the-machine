@@ -1,7 +1,12 @@
 from .chunking import chunk_file, save_chunks, load_chunks
 from .retriever import save_bm25_index, build_postings, load_bm25_index
 from .retriever import search, map_chunk
-from .cache import read_index_revision, write_index_revision
+from .cache import (
+    read_index_revision, write_index_revision,
+    load_index_cached, make_query_cache_key,
+    read_query_cache, write_query_cache)
+from .hybrid import fuse_rankings
+from .semantic import search_semantic, read_semantic_manifest
 from pathlib import Path
 from typing import List, Dict
 from .models import Chunk
@@ -142,15 +147,62 @@ def search_saved_index(
     query: str,
     k: int,
     processed_directory: Path,
+    method: str = 'bm25'
 ) -> list[Chunk]:
-    chunks = processed_directory / 'chunks.json'
-    bm25 = processed_directory / 'bm25.json'
-    # if not chunks.is_file() or bm25.is_file():
-    #     raise FileNotFoundError("chunks and bm25 index not found")
-    try:
-        chunk_lengths, chunk_terms, postings = load_bm25_index(bm25)
-    except json.JSONDecodeError:
-        raise ValueError("The saved BM25 index contains invalid JSON.")
-    chunks_map = map_chunk(load_chunks(chunks))
-    results = search(query, k, chunks_map, chunk_lengths, postings)
+    if type(query) is not str or type(k) is not int or k < 0:
+        raise ValueError("Invalid parameter detected!")
+    if type(method) is not str or method.lower() not in ('bm25', 'semantic',
+                                                         'hybrid'):
+        raise ValueError("Method should be a string (bm25 or semantic)")
+    if k == 0 or not query.strip():
+        return []
+    method = method.lower()
+    path = processed_directory.resolve()
+    metadata = path / 'metadata.json'
+    chunkss = path / 'chunks.json'
+    revision = read_index_revision(path)
+    hashed = make_query_cache_key(path, revision, query, k, method)
+    cache_path = path / "cache" / "queries" / revision / f"{hashed}.json"
+    required_files = [metadata, chunkss]
+
+    if method in ("bm25", "hybrid"):
+        required_files.append(path / "bm25.json")
+
+    if method in ("semantic", "hybrid"):
+        required_files.extend([
+            path / "semantic" / "manifest.json",
+            path / "semantic" / "embeddings.npy",
+        ])
+
+    for file in required_files:
+        if not file.is_file():
+            raise FileNotFoundError(f"Missing index file: {file}")
+
+    if method in ("semantic", "hybrid"):
+        read_semantic_manifest(path)
+    chunks = read_query_cache(cache_path)
+    if chunks is not None:
+        return chunks
+
+    if method in ('bm25', 'hybrid'):
+        index = load_index_cached(path)
+        retrieval_k = max(20, k) if method == "hybrid" else k
+        bm25_results = search(query, retrieval_k,
+                              index.chunks_ids,
+                              index.chunk_lengths,
+                              index.postings)
+        if method != "hybrid":
+            results = bm25_results
+    if method in ("semantic", 'hybrid'):
+        if cache_path.is_file():
+            chunks = read_query_cache(cache_path)
+            if chunks is not None:
+                return chunks
+        retrieval_k = max(20, k) if method == "hybrid" else k
+        semantic_results = search_semantic(query, path, retrieval_k)
+        if method != "hybrid":
+            results = semantic_results
+    if method == "hybrid":
+        results = fuse_rankings(bm25_results, semantic_results, k)
+    write_query_cache(cache_path, results)
     return results

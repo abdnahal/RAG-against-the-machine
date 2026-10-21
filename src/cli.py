@@ -1,10 +1,8 @@
 from pathlib import Path
-from .indexer import index_corpus, search_saved_index, map_chunk
-from .indexer import load_bm25_index
+from .indexer import index_corpus, search_saved_index
 from tqdm import tqdm
 from .generation import generate_answer, build_messages, load_llm
-from .retriever import search as ret_search
-from .chunking import load_chunks
+from .semantic import load_semantic_index, build_semantic_index
 from .evaluation import recall_for_question
 from .models import MinimalSource, MinimalSearchResults, UnansweredQuestion
 from .models import StudentSearchResults, RagDataset, AnsweredQuestion
@@ -20,6 +18,7 @@ class RagCLI:
         max_chunk_size: int = 2000,
         corpus_path: str = "data/raw/vllm-0.10.1",
         processed_directory: str = "data/processed",
+        semantic: bool = False
     ) -> None:
         """Build or update the saved index."""
         if type(max_chunk_size) is not int or not 1 <= max_chunk_size <= 2000:
@@ -27,6 +26,11 @@ class RagCLI:
         corpus = Path(corpus_path)
         processed = Path(processed_directory)
         index_corpus(corpus, processed, max_chunk_size)
+        if semantic:
+            try:
+                load_semantic_index(processed)
+            except (FileNotFoundError, ValueError):
+                build_semantic_index(processed)
         print("Indexing completed successfully!")
 
     def search(
@@ -35,13 +39,16 @@ class RagCLI:
         k: int = 5,
         processed_directory: str = "data/processed",
         output_path: str = "data/output/search_results/single.json",
+        method: str = "bm25"
     ) -> None:
         """Search the saved index and write JSON results."""
         sources = []
         if type(k) is not int or k < 0:
             raise ValueError("k must be a nonnegative integer.")
         if query.strip() and k:
-            chunks = search_saved_index(query, k, Path(processed_directory))
+            chunks = search_saved_index(query, k,
+                                        Path(processed_directory),
+                                        method=method)
             for chunk in chunks:
                 sources.append(
                     MinimalSource(
@@ -68,6 +75,7 @@ class RagCLI:
         k: int,
         save_directory: str,
         processed_directory: str = "data/processed",
+        method: str = "bm25"
     ) -> None:
         """Search every question in a dataset."""
         results = []
@@ -92,15 +100,10 @@ class RagCLI:
                 )
             question_ids.add(question.question_id)
 
-        chunks = load_chunks(Path(processed_directory) / "chunks.json")
-        chunk_ids = map_chunk(chunks)
-        chunk_lengths, _, postings = load_bm25_index(
-            Path(processed_directory) / "bm25.json"
-        )
         for question in tqdm(dataset.rag_questions, desc="Searching"):
-            ret_chunks = ret_search(
-                question.question, k, chunk_ids, chunk_lengths, postings
-            )
+            ret_chunks = search_saved_index(question.question,
+                                            k, Path(processed_directory),
+                                            method=method)
             sources = [
                 MinimalSource(
                     file_path=chunk.file_path,
@@ -197,7 +200,9 @@ class RagCLI:
     def answer(self, query: str,
                output: str = 'data/output/search_results_and_answer',
                processed_directory: str = 'data/processed',
-               k: int = 5) -> None:
+               k: int = 5,
+               method: str = "bm25"
+               ) -> None:
 
         if type(k) is not int or k < 0:
             raise ValueError("k must be a nonnegative integer.")
@@ -209,6 +214,7 @@ class RagCLI:
                 query,
                 k,
                 Path(processed_directory),
+                method=method
             )
 
         if not query.strip():

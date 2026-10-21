@@ -1,8 +1,14 @@
 """Pydantic models used by the RAG pipeline."""
 
 import uuid
-
+from typing import Literal
 from pydantic import BaseModel, Field, field_validator
+
+
+class QueryRequest(BaseModel):
+    query: str
+    k: int = Field(strict=True, ge=0)
+    method: Literal["bm25", "semantic", "hybrid"]
 
 
 class Chunk(BaseModel):

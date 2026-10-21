@@ -13,6 +13,10 @@ dependencies = [
     "langchain-text-splitters>=1.1.2",
     "transformers>=4.51.0",
     "torch>=2.14.1",
+    "sentence-transformers>=6.1.0",
+    "numpy>=2.2.6",
+    "fastapi>=0.153.0",
+    "uvicorn>=0.54.0",
 ]
 
 [dependency-groups]
