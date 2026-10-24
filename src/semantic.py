@@ -137,7 +137,8 @@ def build_semantic_index(processed_directory: Path) -> None:
     chunks = load_chunks(path)
     maped = map_chunk(chunks)
     ids = list(maped.keys())
-    texts = [maped[id].text for id in ids]
+    texts = [f"File: {maped[id].file_path}\n\n" + maped[id].text
+             for id in ids]
     manifest = {'index_revision': read_index_revision(processed_directory)}
     if not texts:
         manifest['dimension'] = 384

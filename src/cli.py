@@ -72,8 +72,8 @@ class RagCLI:
     def search_dataset(
         self,
         dataset_path: str,
-        k: int,
         save_directory: str,
+        k: int = 5,
         processed_directory: str = "data/processed",
         method: str = "bm25"
     ) -> None:
