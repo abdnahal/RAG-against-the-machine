@@ -14,6 +14,7 @@ from tqdm import tqdm
 import hashlib
 import json
 import os
+from typing import Any
 
 
 def file_hash(path: Path) -> str:
@@ -58,7 +59,7 @@ def index_corpus(
     corpus_path: Path,
     processed_directory: Path,
     max_chunk_size: int = 2000
-) -> None:
+) -> dict[str, Any]:
 
     if not corpus_path.exists() or not corpus_path.is_dir():
         raise FileNotFoundError("Missing corpus folder!")
@@ -112,7 +113,12 @@ def index_corpus(
                   if chunk.file_path in added | modified}
     if not rebuild:
         if not (added | deleted | modified):
-            return
+            return {
+                "added": added,
+                "modified": modified,
+                "deleted": deleted,
+                "rebuild": rebuild
+            }
 
         chunk_lengths, chunk_terms, postings = load_bm25_index(bm25)
 
@@ -141,6 +147,12 @@ def index_corpus(
     chunks_map['max_chunk_size'] = max_chunk_size
     save_map(chunks_map, maped)
     write_index_revision(processed_directory)
+    return {
+            "added": added,
+            "modified": modified,
+            "deleted": deleted,
+            "rebuild": rebuild
+            }
 
 
 def search_saved_index(

@@ -25,7 +25,7 @@ class RagCLI:
             raise ValueError("Invalid max_chunk_size!")
         corpus = Path(corpus_path)
         processed = Path(processed_directory)
-        index_corpus(corpus, processed, max_chunk_size)
+        status = index_corpus(corpus, processed, max_chunk_size)
         if semantic:
             try:
                 load_semantic_index(processed)
