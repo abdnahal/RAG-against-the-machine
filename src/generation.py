@@ -3,7 +3,7 @@ from typing import List, Tuple
 from functools import lru_cache
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
-import torch
+from torch import float32, inference_mode
 
 
 def build_context(chunks: list[Chunk]) -> str:
@@ -69,7 +69,7 @@ def load_llm() -> Tuple[PreTrainedTokenizerBase,
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(model_name,
-                                                 dtype=torch.float32)
+                                                 dtype=float32)
     model.to("cpu")
     model.eval()
 
@@ -98,7 +98,7 @@ def generate_answer(tokenizer: PreTrainedTokenizerBase,
     if inputs_lenght + max_new_tokens > 32768:
         raise ValueError("the prompt and answer exceed the context limit.")
 
-    with torch.inference_mode():
+    with inference_mode():
         output_ids = model.generate(
             **inputs,
             max_new_tokens=max_new_tokens,

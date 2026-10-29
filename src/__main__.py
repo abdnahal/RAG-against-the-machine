@@ -1,5 +1,5 @@
 import fire
-import sys
+lazy import sys
 
 from .cli import RagCLI
 

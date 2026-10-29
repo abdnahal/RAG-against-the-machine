@@ -1,10 +1,10 @@
 import re
 from collections import Counter
 from typing import List, Dict, Tuple
-import json
+lazy import json
 from .models import Chunk
-import hashlib
-import math
+lazy import hashlib
+lazy import math
 from pathlib import Path
 
 

@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import List, Dict
 from .models import Chunk
 from tqdm import tqdm
-import hashlib
-import json
-import os
+lazy import hashlib
+lazy import json
+lazy import os
 from typing import Any
 
 

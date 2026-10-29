@@ -2,7 +2,7 @@ from .models import Chunk
 from langchain_text_splitters import PythonCodeTextSplitter
 from typing import List
 from pathlib import Path
-import json
+lazy import json
 
 
 def chunk_markdown(

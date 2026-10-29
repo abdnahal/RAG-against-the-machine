@@ -1,5 +1,5 @@
 from pathlib import Path
-import json
+lazy import json
 import uuid
 from .models import IndexData, Chunk
 from functools import lru_cache

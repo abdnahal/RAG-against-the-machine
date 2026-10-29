@@ -7,7 +7,7 @@ from .evaluation import recall_for_question
 from .models import MinimalSource, MinimalSearchResults, UnansweredQuestion
 from .models import StudentSearchResults, RagDataset, AnsweredQuestion
 from .models import StudentSearchResultsAndAnswer, MinimalAnswer, Chunk
-import json
+lazy import json
 
 
 class RagCLI:
@@ -25,12 +25,19 @@ class RagCLI:
             raise ValueError("Invalid max_chunk_size!")
         corpus = Path(corpus_path)
         processed = Path(processed_directory)
-        status = index_corpus(corpus, processed, max_chunk_size)
         if semantic:
             try:
-                load_semantic_index(processed)
+                old_semantic = load_semantic_index(processed)
             except (FileNotFoundError, ValueError):
-                build_semantic_index(processed)
+                old_semantic = None
+            status = index_corpus(corpus, processed, max_chunk_size)
+            if not old_semantic or (status['rebuild']
+                                    or status['added']
+                                    or status['modified']
+                                    or status['deleted']):
+                build_semantic_index(processed, status, old_semantic)
+        else:
+            index_corpus(corpus, processed, max_chunk_size)
         print("Indexing completed successfully!")
 
     def search(

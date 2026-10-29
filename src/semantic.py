@@ -6,7 +6,7 @@ from .retriever import map_chunk
 from pathlib import Path
 import numpy as np
 from .cache import read_index_revision
-import json
+lazy import json
 from .models import Chunk
 from torch import topk
 from typing import Any
@@ -129,31 +129,60 @@ def load_semantic_index(
     )
 
 
-def build_semantic_index(processed_directory: Path) -> None:
+def build_semantic_index(
+        processed_directory: Path,
+        status: dict[str, Any],
+        old_semantic: tuple[list[str], Any, dict[str, Chunk]] | None
+        ) -> None:
+
     path = processed_directory / 'chunks.json'
     embeddings = processed_directory / 'semantic' / 'embeddings.npy'
     data = processed_directory / 'semantic' / 'manifest.json'
     embeddings.parent.mkdir(parents=True, exist_ok=True)
-    chunks = load_chunks(path)
-    maped = map_chunk(chunks)
-    ids = list(maped.keys())
-    texts = [f"File: {maped[id].file_path}\n\n" + maped[id].text
-             for id in ids]
-    manifest = {'index_revision': read_index_revision(processed_directory)}
-    if not texts:
-        manifest['dimension'] = 384
-        chunks_embeddings = np.ndarray((0, 384), dtype=np.float32)
+    model = load_embedding_model()
+    current_chunks = load_chunks(path)
+    current_map = map_chunk(current_chunks)
+    current_ids = list(current_map)
+    if old_semantic and not status['rebuild']:
+        new_embeddings = []
+        old_ids, chunk_embeddings, maped = old_semantic
+        changed_files = status['added'] | status['modified']
+        manifest = {'index_revision': read_index_revision(processed_directory)}
+        for idx, id in enumerate(current_ids):
+            chunk = current_map[id]
+            if chunk.file_path in changed_files:
+                text = f"File: {chunk.file_path}\n\n{chunk.text}"
+                new_embeddings.append(model.encode(text,
+                                                   normalize_embeddings=True,
+                                                   convert_to_numpy=True))
+            else:
+                new_embeddings.append(chunk_embeddings[old_ids.index(id)])
+        if new_embeddings:
+            chunk_embeddings = np.stack(new_embeddings).astype(np.float32)
+        else:
+            chunk_embeddings = np.empty((0, 384), dtype=np.float32)
+        manifest['dimension'] = chunk_embeddings.shape[1]
     else:
-        model = load_embedding_model()
-        chunks_embeddings = model.encode_document(texts,
-                                                  normalize_embeddings=True,
-                                                  convert_to_numpy=True,
-                                                  batch_size=16,
-                                                  show_progress_bar=True)
-        manifest['dimension'] = chunks_embeddings.shape[1]
+        chunks = load_chunks(path)
+        maped = map_chunk(chunks)
+        ids = list(maped.keys())
+        texts = [f"File: {maped[id].file_path}\n\n" + maped[id].text
+                 for id in ids]
+        manifest = {'index_revision': read_index_revision(processed_directory)}
+        if not texts:
+            manifest['dimension'] = 384
+            chunk_embeddings = np.empty((0, 384), dtype=np.float32)
+        else:
+            chunk_embeddings = model.encode_document(
+                                                texts,
+                                                normalize_embeddings=True,
+                                                convert_to_numpy=True,
+                                                batch_size=16,
+                                                show_progress_bar=True)
+            manifest['dimension'] = chunk_embeddings.shape[1]
     manifest['model_name'] = "sentence-transformers/all-MiniLM-L6-v2"
-    manifest['chunk_ids'] = ids
-    np.save(embeddings, chunks_embeddings)
+    manifest['chunk_ids'] = current_ids
+    np.save(embeddings, chunk_embeddings)
     with data.open('w') as f:
         json.dump(manifest, f)
 
