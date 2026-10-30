@@ -253,6 +253,7 @@ question."
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open('w') as f:
             json.dump(output.model_dump(), f, indent=2)
+        print(answer_text)
 
     def answer_dataset(
         self,

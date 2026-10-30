@@ -49,7 +49,8 @@ def answer(query: str,
            method: str = "bm25") -> MinimalAnswer:
 
     if type(k) is not int or k < 0:
-        raise HTTPException("k must be a nonnegative integer.")
+        raise HTTPException(status_code=422,
+                            detail="k must be a nonnegative integer.")
 
     chunks = []
     if query.strip() and k > 0:
@@ -89,9 +90,23 @@ question."
 
 @app.post('/search', response_model=MinimalSearchResults)
 def search_endpoint(request: QueryRequest) -> MinimalSearchResults:
-    return search(request.query, request.k, method=request.method)
+    try:
+        search_result = search(request.query, request.k, method=request.method)
+    except FileNotFoundError:
+        raise HTTPException(status_code=503,
+                            detail="Required local files are missing. Check \
+the index and model files.")
+    return search_result
 
 
 @app.post('/answer', response_model=MinimalAnswer)
 def answer_question(request: QueryRequest) -> MinimalAnswer:
-    return answer(request.query, k=request.k, method=request.method)
+    try:
+        answer_result = answer(request.query,
+                               k=request.k,
+                               method=request.method)
+    except FileNotFoundError:
+        raise HTTPException(status_code=503,
+                            detail="Required local files are missing. Check \
+the index and model files.")
+    return answer_result
