@@ -1,5 +1,5 @@
 from pathlib import Path
-lazy import json
+import json
 import uuid
 from .models import IndexData, Chunk
 from functools import lru_cache
@@ -13,7 +13,7 @@ def write_index_revision(processed_directory: Path) -> str:
     metadata = Path(processed_directory) / "metadata.json"
     uid = str(uuid.uuid4())
     with metadata.open('w') as f:
-        json.dump({"index_revision": uid}, f)
+        json.dump({"index_revision": uid}, f, indent=2)
     return uid
 
 
@@ -76,7 +76,7 @@ def write_query_cache(
     cache_path.parent.mkdir(exist_ok=True, parents=True)
     with cache_path.open('w') as f:
         objects = [chunk.model_dump() for chunk in chunks]
-        json.dump(objects, f)
+        json.dump(objects, f, indent=2)
 
 
 def read_query_cache(cache_path: Path) -> list[Chunk] | None:

@@ -7,7 +7,7 @@ from .evaluation import recall_for_question
 from .models import MinimalSource, MinimalSearchResults, UnansweredQuestion
 from .models import StudentSearchResults, RagDataset, AnsweredQuestion
 from .models import StudentSearchResultsAndAnswer, MinimalAnswer, Chunk
-lazy import json
+import json
 
 
 class RagCLI:

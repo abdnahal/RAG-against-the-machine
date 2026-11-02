@@ -6,7 +6,7 @@ from .retriever import map_chunk
 from pathlib import Path
 import numpy as np
 from .cache import read_index_revision
-lazy import json
+import json
 from .models import Chunk
 from torch import topk
 from typing import Any
@@ -148,7 +148,7 @@ def build_semantic_index(
         old_ids, chunk_embeddings, maped = old_semantic
         changed_files = status['added'] | status['modified']
         manifest = {'index_revision': read_index_revision(processed_directory)}
-        for idx, id in enumerate(current_ids):
+        for id in current_ids:
             chunk = current_map[id]
             if chunk.file_path in changed_files:
                 text = f"File: {chunk.file_path}\n\n{chunk.text}"
@@ -177,14 +177,14 @@ def build_semantic_index(
                                                 texts,
                                                 normalize_embeddings=True,
                                                 convert_to_numpy=True,
-                                                batch_size=16,
+                                                batch_size=8,
                                                 show_progress_bar=True)
             manifest['dimension'] = chunk_embeddings.shape[1]
     manifest['model_name'] = "sentence-transformers/all-MiniLM-L6-v2"
     manifest['chunk_ids'] = current_ids
     np.save(embeddings, chunk_embeddings)
     with data.open('w') as f:
-        json.dump(manifest, f)
+        json.dump(manifest, f, indent=2)
 
 
 def search_semantic(

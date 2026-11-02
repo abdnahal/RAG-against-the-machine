@@ -1,5 +1,5 @@
-import fire
-lazy import sys
+from fire import Fire
+from sys import stderr
 
 from .cli import RagCLI
 
@@ -7,9 +7,9 @@ from .cli import RagCLI
 def main() -> None:
     """Run the command-line interface."""
     try:
-        fire.Fire(RagCLI)
+        Fire(RagCLI)
     except Exception as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        print(f"Error: {exc}", file=stderr)
         raise SystemExit(1)
     except KeyboardInterrupt:
         print("\nProgram interrupted!\n")

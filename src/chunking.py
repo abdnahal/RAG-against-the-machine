@@ -2,7 +2,7 @@ from .models import Chunk
 from langchain_text_splitters import PythonCodeTextSplitter
 from typing import List
 from pathlib import Path
-lazy import json
+import json
 
 
 def chunk_markdown(
@@ -104,10 +104,8 @@ def chunk_code(
 
 
 def save_chunks(chunks: List[Chunk], path: Path) -> None:
-    final = []
     with open(str(path), 'w') as f:
-        for chunk in chunks:
-            final.append(chunk.model_dump())
+        final = [chunk.model_dump() for chunk in chunks]
         json.dump(final, f, indent=2)
 
 
