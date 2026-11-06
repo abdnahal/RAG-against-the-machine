@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 def tokenize(text: str) -> list[str]:
+    """Extract lowercase terms and preserve complete snake_case identifiers."""
     text = text.lower()
 
     tokens = re.findall(r"[a-z0-9]+", text)
@@ -24,11 +25,13 @@ def tokenize(text: str) -> list[str]:
 
 
 def counted(sequence: List) -> Dict[str, int]:
+    """Return the frequency of each item in a sequence."""
     count = Counter(sequence)
     return count
 
 
 def map_chunk(chunks: List[Chunk]) -> Dict[str, Chunk]:
+    """Map stable chunk identifiers to their source chunks."""
     maped = {}
     for chunk in chunks:
         maped[make_chunk_id(chunk)] = chunk
@@ -52,9 +55,10 @@ def build_postings(maped: Dict[str, Chunk]) -> Tuple[
     Dict[str, Dict[str, int]],
     Dict[str, Dict[str, int]],
 ]:
+    """Build token lengths, per-chunk counts, and inverted postings."""
     chunk_lengths = {}
     chunk_terms = {}
-    postings = {}
+    postings: dict[str, dict[str, int]] = {}
     for chunk_id, chunk in maped.items():
         searchable_text = (
             chunk.text + "\n" + Path(chunk.file_path).name
@@ -79,6 +83,7 @@ def bm25_term_score(
     k1: float = 1.2,
     b: float = 0.75,
 ) -> float:
+    """Return one query term's BM25 contribution to a chunk score."""
     idf = math.log(
         1 + (document_count - df + 0.5) / (df + 0.5)
     )
@@ -102,10 +107,11 @@ def search(
     chunk_lengths: dict[str, int],
     postings: dict[str, dict[str, int]],
 ) -> list[Chunk]:
+    """Return up to k chunks ranked by BM25 score."""
     if k <= 0 or not chunk_lengths:
         return []
     chunks = []
-    scores = {}
+    scores: dict[str, float] = {}
     N = sum(chunk_lengths.values())
     avg = N / len(chunk_lengths)
     for term in sorted(set(tokenize(query))):
@@ -125,11 +131,13 @@ def save_bm25_index(
     postings: dict[str, dict[str, int]],
     path: Path,
 ) -> None:
-    data = {}
+    """Save chunk lengths, term counts, and postings as JSON."""
+    data = {
+        'chunk_lengths': chunk_lengths,
+        'chunk_terms': chunk_terms,
+        'postings': postings,
+    }
     with open(str(path), 'w') as f:
-        data['chunk_lengths'] = chunk_lengths
-        data['chunk_terms'] = chunk_terms
-        data['postings'] = postings
         json.dump(data, f, indent=2)
 
 
@@ -138,6 +146,7 @@ def load_bm25_index(path: Path) -> Tuple[
     Dict[str, Dict[str, int]],
     Dict[str, Dict[str, int]],
 ]:
+    """Load chunk lengths, term counts, and postings from JSON."""
     with open(str(path), 'r') as f:
         data = json.load(f)
         return (data['chunk_lengths'], data["chunk_terms"], data["postings"])

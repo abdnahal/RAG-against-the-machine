@@ -160,6 +160,7 @@ class RagCLI:
             raise ValueError("The ground-truth dataset is empty.")
 
         expected_ids = set()
+        answered_questions: list[AnsweredQuestion] = []
         for question in dataset.rag_questions:
             if not isinstance(question, AnsweredQuestion):
                 raise ValueError("Dataset should contain answered questions")
@@ -175,8 +176,9 @@ class RagCLI:
                     f"Question {question.question_id} has no expected sources."
                 )
             expected_ids.add(question.question_id)
+            answered_questions.append(question)
 
-        result_ids = {}
+        result_ids: dict[str, list[MinimalSource]] = {}
 
         for result in student_search.search_results:
             if result.question_id in result_ids.keys():
@@ -198,7 +200,7 @@ class RagCLI:
             )
 
         recalls = []
-        for question in dataset.rag_questions:
+        for question in answered_questions:
             ret = result_ids.get(question.question_id, [])
             recalls.append(recall_for_question(ret, question.sources, k))
         avg = sum(recalls) / len(recalls)
@@ -211,6 +213,7 @@ class RagCLI:
                method: str = "bm25"
                ) -> None:
 
+        """Retrieve evidence, generate an answer, and save the result."""
         if type(k) is not int or k < 0:
             raise ValueError("k must be a nonnegative integer.")
 
@@ -248,11 +251,11 @@ question."
             retrieved_sources=sources,
             answer=answer_text,
         )
-        output = StudentSearchResultsAndAnswer(search_results=[result],
-                                               k=k)
+        answer_results = StudentSearchResultsAndAnswer(search_results=[result],
+                                                       k=k)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open('w') as f:
-            json.dump(output.model_dump(), f, indent=2)
+            json.dump(answer_results.model_dump(), f, indent=2)
         print(answer_text)
 
     def answer_dataset(
@@ -261,6 +264,7 @@ question."
         save_directory: str = "data/output/search_results_and_answer",
     ) -> None:
 
+        """Generate answers from saved source locations and write JSON."""
         answers = []
         path = Path(student_search_results_path)
         output_path = Path(save_directory) / path.name
@@ -286,7 +290,7 @@ question."
                 raise ValueError("Retrieved source count exceeds k.")
             question_ids.add(result.question_id)
 
-        file_cache = {}
+        file_cache: dict[str, str] = {}
         for result in tqdm(results.search_results, desc="Answering"):
             chunks = []
             for file in result.retrieved_sources:

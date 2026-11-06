@@ -14,7 +14,7 @@ The implementation also includes the five bonus features: semantic embeddings, h
 
 ### Requirements and installation
 
-- Python **3.15**: the current source uses the `lazy import` syntax and cannot run unchanged on earlier Python versions.
+- Python **3.10 or later**. The repository pins Python 3.10 in `.python-version`; the current source uses standard imports.
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) for Python and dependency management.
 - A CPU and enough free disk space for the corpus, Python dependencies, indices, and Hugging Face model weights. Together these can occupy several gigabytes.
 - Internet access for initial dependency installation and model downloads. Cached model weights can be reused afterward.
@@ -24,11 +24,11 @@ Run from the repository root:
 ```bash
 git clone https://github.com/abdnahal/RAG-against-the-machine.git
 cd RAG-against-the-machine
-uv python install 3.15
+uv python install 3.10
 uv sync --locked
 ```
 
-The project configures a dedicated PyTorch CPU package index in `pyproject.toml`. Keep `uv.lock` when reproducing the environment. Python 3.15 support depends on compatible dependency wheels being available for the target platform.
+Keep `uv.lock` when reproducing the environment. Dependencies are resolved from PyPI; the application explicitly runs both models on the CPU. The lockfile can include GPU-related dependencies on some platforms even though the application does not require a GPU.
 
 Place the **provided** corpus and datasets in this layout; do not substitute another vLLM revision, because the expected source offsets refer to the supplied files:
 
@@ -201,8 +201,8 @@ The CLI and local HTTP API share retrieval and generation functions.
 | --- | --- |
 | `src/cli.py`, `src/__main__.py` | Fire commands, batch orchestration, command-line error reporting. |
 | `src/models.py` | Pydantic schemas for chunks, questions, sources, results, and API requests. |
-| `src/chunking.py` | File discovery, document segmentation, and source offsets. |
-| `src/indexer.py` | Incremental indexing and retrieval-method dispatch. |
+| `src/chunking.py` | Document segmentation and source offsets. |
+| `src/indexer.py` | File discovery, incremental indexing, and retrieval-method dispatch. |
 | `src/retriever.py` | Tokenization, chunk IDs, BM25 postings, and lexical ranking. |
 | `src/semantic.py`, `src/hybrid.py` | Embedding storage, vector search, and rank fusion. |
 | `src/cache.py` | Index revisions, in-process index reuse, and persistent query caching. |
@@ -277,6 +277,8 @@ The following are **historical public-dataset measurements from development**, b
 
 Those outputs were accepted as valid by the moulinette, and local recall agreed with it. BM25 and hybrid met both recall thresholds in those runs. Semantic retrieval alone remained below both thresholds despite the improvement from adding file paths. A general-purpose embedding model and its limited input window can struggle with exact identifiers and code-specific evidence.
 
+A fresh local run of the supplied retrieval exam on **2026-11-06**, using the locked Python 3.10 environment and the 200-question evaluation set, passed all four checks. Default BM25 achieved **84% docs Recall@5** and **65% code Recall@5**. Fresh lexical indexing took **14 seconds** and the two batch retrieval commands took **27 seconds** in total. These measurements describe that machine and run; reproduce them on the evaluation machine.
+
 ### Runtime and remaining limits
 
 The subject requires full-corpus indexing within **5 minutes** and retrieval of **200 questions within 90 seconds**. Earlier CPU measurements on an Intel Core 5 120U included approximately **12 seconds** for lexical indexing and **13.5 seconds** for two BM25 batch commands covering 199 questions, including their startup time. The latter is useful context, but is not an exact 200-question timing run.
@@ -303,7 +305,7 @@ Qwen generation is substantially slower than retrieval on the CPU. The model is 
 - **Serving outdated results:** corpus revisions separate cached query results and invalidate loaded indices; semantic metadata rejects a vector index belonging to an older corpus revision.
 - **Low semantic recall:** adding the file path to embedding input improved the measured results. Hybrid ranking combines that signal with stronger lexical matching, while semantic-only recall remains a limitation.
 - **Slow answer generation and unsupported claims:** model reuse, bounded output, disabled thinking, and numbered evidence prompts address cost and grounding. CPU latency and small-model answer quality remain tradeoffs.
-- **Python and dependency compatibility:** adopting `lazy import` raised the runtime requirement to Python 3.15. The CPU PyTorch package source and lockfile record the dependency setup; lazy imports affect startup work, not the cost of encoding or generating tokens.
+- **Python and dependency compatibility:** the project uses standard imports and pins Python 3.10 for reproducibility. The lockfile records the dependency setup. Models are reused within each process, while separate CLI processes load them independently.
 
 ## Resources
 

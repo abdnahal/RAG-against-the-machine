@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 
 def write_index_revision(processed_directory: Path) -> str:
+    """Save a new revision UUID and return it."""
     metadata = Path(processed_directory) / "metadata.json"
     uid = str(uuid.uuid4())
     with metadata.open('w') as f:
@@ -18,6 +19,7 @@ def write_index_revision(processed_directory: Path) -> str:
 
 
 def read_index_revision(processed_directory: Path) -> str:
+    """Read and validate the saved index revision."""
     metadata = Path(processed_directory) / 'metadata.json'
     with metadata.open('r') as f:
         try:
@@ -36,6 +38,7 @@ def read_index_revision(processed_directory: Path) -> str:
 
 
 def load_index_cached(processed_directory: Path) -> IndexData:
+    """Return the current BM25 index, reusing its cached revision."""
     path = Path(processed_directory).resolve()
     data = path / 'metadata.json'
     chunks = path / 'chunks.json'
@@ -58,6 +61,7 @@ def _load_index_for_revision(
     directory: str,
     revision: str,
 ) -> IndexData:
+    """Load chunk mappings and BM25 data for one revision."""
     bm25 = Path(directory) / 'bm25.json'
     chunks_f = Path(directory) / 'chunks.json'
     chunks = load_chunks(chunks_f)
@@ -73,6 +77,7 @@ def write_query_cache(
     cache_path: Path,
     chunks: list[Chunk],
 ) -> None:
+    """Save ranked chunks for a retrieval cache entry."""
     cache_path.parent.mkdir(exist_ok=True, parents=True)
     with cache_path.open('w') as f:
         objects = [chunk.model_dump() for chunk in chunks]
@@ -80,6 +85,7 @@ def write_query_cache(
 
 
 def read_query_cache(cache_path: Path) -> list[Chunk] | None:
+    """Return cached chunks, or None for a missing or invalid entry."""
     if not cache_path.exists() or not cache_path.is_file():
         return None
     with cache_path.open('r') as f:
@@ -100,6 +106,7 @@ def make_query_cache_key(
     k: int,
     method: str = 'bm25'
 ) -> str:
+    """Hash index identity and retrieval parameters into a cache key."""
     payload = {
         "retrieval_version": "v2",
         "directory": str(Path(processed_directory).resolve()),

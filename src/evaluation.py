@@ -37,6 +37,7 @@ def recall_for_question(
     k: int,
 ) -> float:
 
+    """Return the fraction of expected sources matched in the top k results."""
     if not expected:
         raise ValueError("Cannot calculate recall without expected sources.")
 

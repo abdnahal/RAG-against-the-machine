@@ -84,7 +84,7 @@ def chunk_code(
     file_path: str,
     max_chunk_size: int = 2000,
 ) -> List[Chunk]:
-    """Spit code into chunks"""
+    """Split Python source into chunks with original character offsets."""
     splitter = PythonCodeTextSplitter(chunk_size=max_chunk_size,
                                       chunk_overlap=0,
                                       keep_separator=True,
@@ -104,12 +104,14 @@ def chunk_code(
 
 
 def save_chunks(chunks: List[Chunk], path: Path) -> None:
+    """Serialize chunks to a JSON file."""
     with open(str(path), 'w') as f:
         final = [chunk.model_dump() for chunk in chunks]
         json.dump(final, f, indent=2)
 
 
 def chunk_file(path: Path, max_chunk_size: int) -> list[Chunk]:
+    """Read a source file and dispatch to its code or text splitter."""
     chunks = []
     path_str = str(path)
     with open(path_str, 'r') as f:
@@ -121,6 +123,7 @@ def chunk_file(path: Path, max_chunk_size: int) -> list[Chunk]:
 
 
 def load_chunks(path: Path) -> List[Chunk]:
+    """Load and validate chunks from a JSON file."""
     chunks = []
     with open(str(path), 'r', encoding='utf-8') as f:
         loaded = json.load(f)

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class QueryRequest(BaseModel):
+    """Validate the query, result count, and HTTP retrieval method."""
     query: str
     k: int = Field(strict=True, ge=0)
     method: Literal["bm25", "semantic", "hybrid"]
@@ -21,6 +22,7 @@ class Chunk(BaseModel):
 
 
 class IndexData(BaseModel):
+    """Hold the loaded chunk mapping and BM25 search structures."""
     chunks_ids: dict[str, Chunk]
     chunk_lengths: dict[str, int]
     postings: dict[str, dict[str, int]]

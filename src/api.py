@@ -10,7 +10,8 @@ app = FastAPI()
 
 
 @app.get('/health')
-def health():
+def health() -> dict[str, str]:
+    """Return a simple HTTP liveness response."""
     return {'status': 'ok'}
 
 
@@ -18,6 +19,7 @@ def search(query: str,
            k: int = 5,
            processed_directory: str = "data/processed",
            method: str = "bm25") -> MinimalSearchResults:
+    """Retrieve chunks and return their source locations for the API."""
     sources = []
     if type(k) is not int or k < 0:
         raise HTTPException(status_code=422,
@@ -48,6 +50,7 @@ def answer(query: str,
            k: int = 5,
            method: str = "bm25") -> MinimalAnswer:
 
+    """Retrieve evidence, generate an answer, and return or save the result."""
     if type(k) is not int or k < 0:
         raise HTTPException(status_code=422,
                             detail="k must be a nonnegative integer.")
@@ -90,6 +93,7 @@ question."
 
 @app.post('/search', response_model=MinimalSearchResults)
 def search_endpoint(request: QueryRequest) -> MinimalSearchResults:
+    """Validate and serve a search request, reporting missing index files."""
     try:
         search_result = search(request.query, request.k, method=request.method)
     except FileNotFoundError:
@@ -101,6 +105,7 @@ the index and model files.")
 
 @app.post('/answer', response_model=MinimalAnswer)
 def answer_question(request: QueryRequest) -> MinimalAnswer:
+    """Serve an answer request, reporting missing local files."""
     try:
         answer_result = answer(request.query,
                                k=request.k,

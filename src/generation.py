@@ -1,9 +1,10 @@
 from .models import Chunk
-from typing import List, Tuple
+from typing import Callable, List, Tuple, cast
 from functools import lru_cache
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers import PreTrainedModel, PreTrainedTokenizerBase
-from torch import float32, inference_mode
+from transformers import BatchEncoding, Qwen3ForCausalLM
+from transformers import PreTrainedTokenizerBase
+from torch import Tensor, float32, inference_mode
 
 
 def build_context(chunks: list[Chunk]) -> str:
@@ -63,21 +64,21 @@ number. "
 
 @lru_cache()
 def load_llm() -> Tuple[PreTrainedTokenizerBase,
-                        PreTrainedModel]:
+                        Qwen3ForCausalLM]:
     """Load and reuse the tokenizer and CPU model."""
     model_name = "Qwen/Qwen3-0.6B"
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name,
-                                                 dtype=float32)
-    model.to("cpu")
+    model = cast(Qwen3ForCausalLM, AutoModelForCausalLM.from_pretrained(
+        model_name, dtype=float32))
+    model.cpu()
     model.eval()
 
     return tokenizer, model
 
 
 def generate_answer(tokenizer: PreTrainedTokenizerBase,
-                    model: PreTrainedModel,
+                    model: Qwen3ForCausalLM,
                     messages: List[dict[str, str]],
                     max_new_tokens: int = 128) -> str:
     """Generate an answer from messages containing retrieved context."""
@@ -85,21 +86,23 @@ def generate_answer(tokenizer: PreTrainedTokenizerBase,
     if type(max_new_tokens) is not int or max_new_tokens <= 0:
         raise ValueError("max_new_tokens must be a positive integer.")
 
-    inputs = tokenizer.apply_chat_template(
+    inputs = cast(BatchEncoding, tokenizer.apply_chat_template(
         messages,
         tokenize=True,
         add_generation_prompt=True,
         enable_thinking=False,
         return_dict=True,
         return_tensors="pt",
-    ).to(model.device)
+    )).to(model.device)
     inputs_lenght = inputs['input_ids'].shape[1]
 
     if inputs_lenght + max_new_tokens > 32768:
         raise ValueError("the prompt and answer exceed the context limit.")
 
+    # The configured call returns token IDs, not a generation-output object.
+    generate = cast(Callable[..., Tensor], getattr(model, "generate"))
     with inference_mode():
-        output_ids = model.generate(
+        output_ids = generate(
             **inputs,
             max_new_tokens=max_new_tokens,
             do_sample=True,
@@ -107,5 +110,5 @@ def generate_answer(tokenizer: PreTrainedTokenizerBase,
             top_p=0.8,
             top_k=20
         )
-    return tokenizer.decode(output_ids[0, inputs_lenght:],
-                            skip_special_tokens=True).strip()
+    return cast(str, tokenizer.decode(output_ids[0, inputs_lenght:],
+                                      skip_special_tokens=True)).strip()

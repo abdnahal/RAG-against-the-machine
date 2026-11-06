@@ -14,6 +14,7 @@ from typing import Any
 
 @lru_cache(maxsize=1)
 def load_embedding_model() -> SentenceTransformer:
+    """Load and cache the CPU embedding model for this process."""
     model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2',
                                 device='cpu')
     return model
@@ -135,6 +136,7 @@ def build_semantic_index(
         old_semantic: tuple[list[str], Any, dict[str, Chunk]] | None
         ) -> None:
 
+    """Save current chunk vectors, reusing unchanged rows when possible."""
     path = processed_directory / 'chunks.json'
     embeddings = processed_directory / 'semantic' / 'embeddings.npy'
     data = processed_directory / 'semantic' / 'manifest.json'
@@ -143,6 +145,7 @@ def build_semantic_index(
     current_chunks = load_chunks(path)
     current_map = map_chunk(current_chunks)
     current_ids = list(current_map)
+    manifest: dict[str, Any]
     if old_semantic and not status['rebuild']:
         new_embeddings = []
         old_ids, chunk_embeddings, maped = old_semantic
@@ -193,6 +196,7 @@ def search_semantic(
     k: int = 5
 ) -> list[Chunk]:
 
+    """Return up to k chunks ranked by embedding similarity."""
     if type(k) is not int or k < 0 or type(query) is not str:
         raise ValueError("k must be a nonnegative integer.")
 

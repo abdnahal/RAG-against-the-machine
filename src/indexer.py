@@ -23,6 +23,7 @@ def file_hash(path: Path) -> str:
 
 
 def discover_files(root: Path) -> list[Path]:
+    """Return supported source and documentation files under the root."""
     files = []
     extensions = (".py", ".md", ".txt", ".rst")
     for item in tqdm(root.rglob("*"), desc="Indexing"):
@@ -36,6 +37,7 @@ def collect_chunks(files: List[Path],
                    max_chunk_size: int,
                    indexed: Dict[str, str],
                    old_chunks: List[Chunk]) -> List[Chunk]:
+    """Reuse unchanged file chunks and split new or modified files."""
     chunks = []
     for file in files:
         file_str = str(file)
@@ -51,6 +53,7 @@ def collect_chunks(files: List[Path],
 
 
 def save_map(maped: Dict[str, str], path: Path) -> None:
+    """Save the file-hash mapping and indexing settings as JSON."""
     with open(str(path), 'w') as f:
         json.dump(maped, f, indent=2)
 
@@ -61,6 +64,7 @@ def index_corpus(
     max_chunk_size: int = 2000
 ) -> dict[str, Any]:
 
+    """Build or update the corpus index and return detected file changes."""
     if not corpus_path.exists() or not corpus_path.is_dir():
         raise FileNotFoundError("Missing corpus folder!")
 
@@ -161,6 +165,7 @@ def search_saved_index(
     processed_directory: Path,
     method: str = 'bm25'
 ) -> list[Chunk]:
+    """Return cached or freshly ranked chunks from the selected method."""
     if type(query) is not str or type(k) is not int or k < 0:
         raise ValueError("Invalid parameter detected!")
     if type(method) is not str or method.lower() not in ('bm25', 'semantic',
