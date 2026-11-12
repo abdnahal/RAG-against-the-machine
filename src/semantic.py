@@ -207,7 +207,8 @@ def search_semantic(
     if not chunk_ids:
         return []
     model = load_embedding_model()
-    encoded = model.encode_query(query, normalize_embeddings=True,
+    encoded = model.encode_query(query,
+                                 normalize_embeddings=True,
                                  convert_to_numpy=True)
     top_k = min(k, len(chunk_ids))
     similarity = model.similarity(embeddings, encoded).squeeze(1)

@@ -96,10 +96,11 @@ def search_endpoint(request: QueryRequest) -> MinimalSearchResults:
     """Validate and serve a search request, reporting missing index files."""
     try:
         search_result = search(request.query, request.k, method=request.method)
-    except FileNotFoundError:
-        raise HTTPException(status_code=503,
-                            detail="Required local files are missing. Check \
-the index and model files.")
+    except (FileNotFoundError, ValueError):
+        raise HTTPException(
+            status_code=503,
+            detail="Required local files are missing or outdated. \
+Check the index and model files.")
     return search_result
 
 
